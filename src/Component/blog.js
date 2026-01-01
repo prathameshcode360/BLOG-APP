@@ -3,8 +3,12 @@ import { useState } from "react";
 function Blog() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [blogs, setBlog] = useState([]);
   function handleSubmit(event) {
     event.preventDefault();
+    setBlog([{ title, content }, ...blogs]);
+    setTitle("");
+    setContent("");
   }
   return (
     <div className="main-container">
@@ -29,8 +33,12 @@ function Blog() {
         </form>
       </div>
       <div className="blog-list">
-        <h3>Title:{title}</h3>
-        <p>Content:{content}</p>
+        {blogs.map((blog, index) => (
+          <div key={index}>
+            <h3>{blog.title}</h3>
+            <p>{blog.content}</p>
+          </div>
+        ))}
       </div>
     </div>
   );
