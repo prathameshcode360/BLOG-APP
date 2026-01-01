@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
+import { db } from "../firebaseInit";
 
 /* ---------------- REDUCER ---------------- */
 function reducerFunction(blogs, action) {
