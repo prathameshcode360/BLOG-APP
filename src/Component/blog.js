@@ -10,7 +10,7 @@ function Blog() {
   }, []);
 
   useEffect(() => {
-    if (blogs.length > 0) {
+    if (blogs.length && blogs[0].title) {
       document.title = blogs[0].title;
     } else {
       document.title = "No-Blogs";
@@ -26,9 +26,12 @@ function Blog() {
       ];
     });
     setFormData({ title: "", content: "" });
+    titleRef.current.focus();
   }
   function removeBlog(index) {
     setBlog(blogs.filter((blog, i) => i !== index));
+    //Alternative Approach
+    // setBlog((prevBlogs) => prevBlogs.filter((blog, i) => i !== index));
   }
   return (
     <div className="main-container">
@@ -49,6 +52,7 @@ function Blog() {
           <input
             type="text"
             placeholder="Enter Title"
+            required
             value={formData.content}
             onChange={(e) =>
               setFormData({ title: formData.title, content: e.target.value })
