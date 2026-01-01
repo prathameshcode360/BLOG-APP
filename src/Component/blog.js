@@ -1,85 +1,140 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { db } from "../firebaseInit";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  updateDoc,
+  getDocs,
+} from "firebase/firestore";
 
-/* ---------------- REDUCER ---------------- */
+/* ================= REDUCER ================= */
+/*
+  blogs = current state
+  action = { type, payload }
+*/
 function reducerFunction(blogs, action) {
   switch (action.type) {
+    case "SET":
+      // Initial load from Firestore
+      return action.blogs;
+
     case "ADD":
+      // Add new blog at top
       return [action.blog, ...blogs];
 
     case "REMOVE":
-      return blogs.filter((_, index) => index !== action.index);
+      // Remove blog using Firebase document ID
+      return blogs.filter((blog) => blog.id !== action.id);
 
     case "UPDATE":
-      return blogs.map((blog, index) =>
-        index === action.index ? action.blog : blog
-      );
+      // Update blog using Firebase document ID
+      return blogs.map((blog) => (blog.id === action.id ? action.blog : blog));
 
     default:
       return blogs;
   }
 }
 
-/* ---------------- COMPONENT ---------------- */
+/* ================= COMPONENT ================= */
 function Blog() {
   const [formData, setFormData] = useState({ title: "", content: "" });
   const [blogs, dispatch] = useReducer(reducerFunction, []);
-  const [editIndex, setEditIndex] = useState(null);
+  const [editId, setEditId] = useState(null); // Firebase doc id
   const titleRef = useRef(null);
 
-  /* Auto focus */
+  /* Auto focus on title input */
   useEffect(() => {
     titleRef.current.focus();
   }, []);
 
-  /* Document title */
+  /* Update browser tab title */
   useEffect(() => {
     document.title = blogs.length > 0 ? blogs[0].title : "No-Blogs";
   }, [blogs]);
 
-  /* Submit (ADD / UPDATE) */
-  function handleSubmit(e) {
+  /* ================= LOAD BLOGS FROM FIRESTORE ================= */
+  useEffect(() => {
+    async function fetchBlogs() {
+      const querySnapshot = await getDocs(collection(db, "blogs"));
+
+      const blogsFromDB = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      dispatch({ type: "SET", blogs: blogsFromDB });
+    }
+
+    fetchBlogs();
+  }, []);
+
+  /* ================= ADD / UPDATE ================= */
+  async function handleSubmit(e) {
     e.preventDefault();
 
-    if (editIndex !== null) {
+    // -------- UPDATE --------
+    if (editId) {
+      const blogRef = doc(db, "blogs", editId);
+
+      await updateDoc(blogRef, {
+        title: formData.title,
+        content: formData.content,
+      });
+
       dispatch({
         type: "UPDATE",
-        index: editIndex,
+        id: editId,
         blog: {
+          id: editId,
           title: formData.title,
           content: formData.content,
         },
       });
-      setEditIndex(null);
-    } else {
+
+      setEditId(null);
+    }
+    // -------- ADD --------
+    else {
+      const docRef = await addDoc(collection(db, "blogs"), {
+        title: formData.title,
+        content: formData.content,
+        createdOn: new Date(),
+      });
+
       dispatch({
         type: "ADD",
         blog: {
+          id: docRef.id, // Firebase ID
           title: formData.title,
           content: formData.content,
         },
       });
     }
 
+    // Reset form
     setFormData({ title: "", content: "" });
     titleRef.current.focus();
   }
 
-  /* Edit */
-  function handleEdit(index) {
-    setEditIndex(index);
+  /* ================= EDIT ================= */
+  function handleEdit(blog) {
+    setEditId(blog.id);
     setFormData({
-      title: blogs[index].title,
-      content: blogs[index].content,
+      title: blog.title,
+      content: blog.content,
     });
     titleRef.current.focus();
   }
 
-  /* Delete */
-  function removeBlog(index) {
-    dispatch({ type: "REMOVE", index });
+  /* ================= DELETE ================= */
+  async function removeBlog(id) {
+    await deleteDoc(doc(db, "blogs", id));
+    dispatch({ type: "REMOVE", id });
   }
 
+  /* ================= UI ================= */
   return (
     <div className="main-container">
       <h2>Blog-App</h2>
@@ -113,17 +168,18 @@ function Blog() {
             }
           />
 
-          <button type="submit">{editIndex !== null ? "Update" : "Add"}</button>
+          <button type="submit">{editId ? "Update" : "Add"}</button>
         </form>
       </div>
 
       <div className="blog-list">
-        {blogs.map((blog, index) => (
-          <div key={index}>
+        {blogs.map((blog) => (
+          <div key={blog.id}>
             <h3>{blog.title}</h3>
             <p>{blog.content}</p>
-            <button onClick={() => handleEdit(index)}>Edit</button>
-            <button onClick={() => removeBlog(index)}>Delete</button>
+
+            <button onClick={() => handleEdit(blog)}>Edit</button>
+            <button onClick={() => removeBlog(blog.id)}>Delete</button>
           </div>
         ))}
       </div>
