@@ -1,8 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
+
+function reducerFunction(blogs, action) {
+  switch (action.type) {
+    case "ADD":
+      return [action.blog, ...blogs];
+    case "REMOVE":
+      return blogs.filter((_, index) => index !== action.index);
+    default:
+      return blogs;
+  }
+}
 
 function Blog() {
   const [formData, setFormData] = useState({ title: "", content: "" });
-  const [blogs, setBlog] = useState([]);
+  const [blogs, dispatch] = useReducer(reducerFunction, []);
   const titleRef = useRef(null);
 
   useEffect(() => {
@@ -19,19 +30,15 @@ function Blog() {
 
   function handleSubmit(event) {
     event.preventDefault();
-    setBlog((prevBlogs) => {
-      return [
-        { title: formData.title, content: formData.content },
-        ...prevBlogs,
-      ];
+    dispatch({
+      type: "ADD",
+      blog: { title: formData.title, content: formData.content },
     });
     setFormData({ title: "", content: "" });
     titleRef.current.focus();
   }
   function removeBlog(index) {
-    setBlog(blogs.filter((blog, i) => i !== index));
-    //Alternative Approach
-    // setBlog((prevBlogs) => prevBlogs.filter((blog, i) => i !== index));
+    dispatch({ type: "REMOVE", index: index });
   }
   return (
     <div className="main-container">
